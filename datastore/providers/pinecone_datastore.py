@@ -1,6 +1,6 @@
 import os
 from typing import Any, Dict, List, Optional
-import pinecone
+from pinecone import Pinecone
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 import asyncio
 from loguru import logger
@@ -19,12 +19,15 @@ from services.date import to_unix_timestamp
 
 # Read environment variables for Pinecone configuration
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-PINECONE_INDEX = os.environ.get("PINECONE_INDEX")
+PINECONE_INDEX_HOST = os.environ.get("PINECONE_INDEX_HOST")
 assert PINECONE_API_KEY is not None
-assert PINECONE_INDEX is not None
+assert PINECONE_INDEX_HOST is not None
 
 # Initialize Pinecone with the API key and environment
-pinecone.init(api_key=PINECONE_API_KEY)
+pc = Pinecone(api_key=PINECONE_API_KEY)
+
+for index in pc.list_indexes():
+    print(index['name'])
 
 # Set the batch size for upserting vectors to Pinecone
 UPSERT_BATCH_SIZE = 100
@@ -35,15 +38,15 @@ class PineconeDataStore(DataStore):
     def __init__(self):
         # Connect to an existing index with the specified name
         try:
-            logger.info(f"Connecting to existing index {PINECONE_INDEX}")
-            self.index = pinecone.Index(PINECONE_INDEX)
-            logger.info(f"Connected to index {PINECONE_INDEX} successfully")
+            logger.info(f"Connecting to existing index {PINECONE_INDEX_HOST}")
+            self.index = pc.Index(host=PINECONE_INDEX_HOST)
+            logger.info(f"Connected to index {PINECONE_INDEX_HOST} successfully")
         except Exception as e:
-            logger.error(f"Error connecting to index {PINECONE_INDEX}: {e}")
+            logger.error(f"Error connecting to index {PINECONE_INDEX_HOST}: {e}")
             raise e
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-    async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
+    async def _upsert(self, chunks: Dict[str, List[DocumentChunk]], namespace) -> List[str]:
         """
         Takes in a dict from document id to list of document chunks and inserts them into the index.
         Return a list of document ids.
@@ -76,9 +79,10 @@ class PineconeDataStore(DataStore):
         for batch in batches:
             try:
                 logger.info(f"Upserting batch of size {len(batch)}")
-                self.index.upsert(vectors=batch)
+                self.index.upsert(vectors=batch, namespace=namespace)
                 logger.info(f"Upserted batch successfully")
             except Exception as e:
+                logger.error(e);
                 logger.error(f"Error upserting batch: {e}")
                 raise e
 
@@ -86,8 +90,9 @@ class PineconeDataStore(DataStore):
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
     async def _query(
-        self,
+        self,        
         queries: List[QueryWithEmbedding],
+        namespace: str
     ) -> List[QueryResult]:
         """
         Takes in a list of queries with embeddings and filters and returns a list of query results with matching document chunks and scores.
@@ -103,7 +108,7 @@ class PineconeDataStore(DataStore):
             try:
                 # Query the index with the query embedding, filter, and top_k
                 query_response = self.index.query(
-                    # namespace=namespace,
+                    namespace=namespace,
                     top_k=query.top_k,
                     vector=query.embedding,
                     filter=pinecone_filter,
@@ -157,6 +162,7 @@ class PineconeDataStore(DataStore):
         ids: Optional[List[str]] = None,
         filter: Optional[DocumentMetadataFilter] = None,
         delete_all: Optional[bool] = None,
+        namespace: Optional[str] = None
     ) -> bool:
         """
         Removes vectors by ids, filter, or everything from the index.
@@ -165,7 +171,7 @@ class PineconeDataStore(DataStore):
         if delete_all:
             try:
                 logger.info(f"Deleting all vectors from index")
-                self.index.delete(delete_all=True)
+                self.index.delete(delete_all=True, namespace=namespace)
                 logger.info(f"Deleted all vectors successfully")
                 return True
             except Exception as e:
@@ -178,7 +184,7 @@ class PineconeDataStore(DataStore):
         if pinecone_filter != {}:
             try:
                 logger.info(f"Deleting vectors with filter {pinecone_filter}")
-                self.index.delete(filter=pinecone_filter)
+                self.index.delete(filter=pinecone_filter, namespace=namespace)
                 logger.info(f"Deleted vectors with filter successfully")
             except Exception as e:
                 logger.error(f"Error deleting vectors with filter: {e}")
@@ -189,7 +195,7 @@ class PineconeDataStore(DataStore):
             try:
                 logger.info(f"Deleting vectors with ids {ids}")
                 pinecone_filter = {"document_id": {"$in": ids}}
-                self.index.delete(filter=pinecone_filter)  # type: ignore
+                self.index.delete(filter=pinecone_filter, namespace=namespace)  # type: ignore
                 logger.info(f"Deleted vectors with ids successfully")
             except Exception as e:
                 logger.error(f"Error deleting vectors with ids: {e}")

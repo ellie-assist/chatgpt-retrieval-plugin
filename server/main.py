@@ -27,6 +27,7 @@ assert BEARER_TOKEN is not None
 
 
 def validate_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    logger.info('validating')
     if credentials.scheme != "Bearer" or credentials.credentials != BEARER_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
@@ -81,7 +82,7 @@ async def upsert(
     request: UpsertRequest = Body(...),
 ):
     try:
-        ids = await datastore.upsert(request.documents)
+        ids = await datastore.upsert(request.documents, None, request.namespace)
         return UpsertResponse(ids=ids)
     except Exception as e:
         logger.error(e)
@@ -95,9 +96,11 @@ async def upsert(
 async def query_main(
     request: QueryRequest = Body(...),
 ):
+    
     try:
         results = await datastore.query(
             request.queries,
+            request.namespace
         )
         return QueryResponse(results=results)
     except Exception as e:
@@ -115,8 +118,10 @@ async def query(
     request: QueryRequest = Body(...),
 ):
     try:
+        logger.info(namespace)
         results = await datastore.query(
             request.queries,
+            request.namespace
         )
         return QueryResponse(results=results)
     except Exception as e:
@@ -141,6 +146,7 @@ async def delete(
             ids=request.ids,
             filter=request.filter,
             delete_all=request.delete_all,
+            namespace=request.namespace
         )
         return DeleteResponse(success=success)
     except Exception as e:
