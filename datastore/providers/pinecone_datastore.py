@@ -19,14 +19,14 @@ from services.date import to_unix_timestamp
 
 # Read environment variables for Pinecone configuration
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-PINECONE_ENVIRONMENT = os.environ.get("PINECONE_ENVIRONMENT")
+
 PINECONE_INDEX = os.environ.get("PINECONE_INDEX")
 assert PINECONE_API_KEY is not None
-assert PINECONE_ENVIRONMENT is not None
+
 assert PINECONE_INDEX is not None
 
 # Initialize Pinecone with the API key and environment
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+pinecone.init(api_key=PINECONE_API_KEY)
 
 # Set the batch size for upserting vectors to Pinecone
 UPSERT_BATCH_SIZE = 100
