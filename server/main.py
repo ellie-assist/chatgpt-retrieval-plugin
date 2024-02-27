@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from dotenv import load_dotenv
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Depends, Body, UploadFile
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -19,6 +20,7 @@ from services.file import get_document_from_file
 
 from models.models import DocumentMetadata, Source
 
+load_dotenv()
 bearer_scheme = HTTPBearer()
 BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
 assert BEARER_TOKEN is not None
