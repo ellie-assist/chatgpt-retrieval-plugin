@@ -195,7 +195,7 @@ class PineconeDataStore(DataStore):
             try:
                 logger.info(f"Deleting vectors with ids {ids}")
                 pinecone_filter = {"document_id": {"$in": ids}}
-                self.index.delete(filter=pinecone_filter, namespace=namespace)  # type: ignore
+                self.index.delete(ids=ids, namespace=namespace)  
                 logger.info(f"Deleted vectors with ids successfully")
             except Exception as e:
                 logger.error(f"Error deleting vectors with ids: {e}")
