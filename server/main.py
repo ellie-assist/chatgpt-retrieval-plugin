@@ -6,6 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Depends, Body, UploadFil
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
+import traceback
 
 from models.api import (
     DeleteRequest,
@@ -14,6 +15,8 @@ from models.api import (
     QueryResponse,
     UpsertRequest,
     UpsertResponse,
+    StatsResponse,
+    UpsertFileRequest
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
@@ -46,6 +49,19 @@ sub_app = FastAPI(
 )
 app.mount("/sub", sub_app)
 
+@app.get(
+    "/stats",
+    response_model=StatsResponse,
+)
+async def stats():    
+    logger.info(f'Get stats')
+    stats = await datastore.stats()
+    return StatsResponse(
+        dimension=stats.dimension,
+        index_fullness=stats.index_fullness,
+        # namespaces=stats.namespaces,
+        total_vector_count=stats.total_vector_count
+    )
 
 @app.post(
     "/upsert-file",
@@ -54,8 +70,11 @@ app.mount("/sub", sub_app)
 async def upsert_file(
     file: UploadFile = File(...),
     metadata: Optional[str] = Form(None),
-):
-    try:
+    namespace: Optional[str] = Form(None)
+):    
+    logger.info(f'Upsert file to namespace: {namespace}')
+
+    try:        
         metadata_obj = (
             DocumentMetadata.parse_raw(metadata)
             if metadata
@@ -63,14 +82,16 @@ async def upsert_file(
         )
     except:
         metadata_obj = DocumentMetadata(source=Source.file)
-
+    
+    
     document = await get_document_from_file(file, metadata_obj)
-
+    logger.info(f'Document: {document}')
     try:
-        ids = await datastore.upsert([document])
+        ids = await datastore.upsert([document], namespace)
         return UpsertResponse(ids=ids)
     except Exception as e:
         logger.error(e)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"str({e})")
 
 
@@ -81,11 +102,13 @@ async def upsert_file(
 async def upsert(
     request: UpsertRequest = Body(...),
 ):
-    try:
-        ids = await datastore.upsert(request.documents, None, request.namespace)
+    try:        
+        logger.info(f"request to UPSERT {request}");
+        ids = await datastore.upsert(request.documents, request.namespace)
         return UpsertResponse(ids=ids)
     except Exception as e:
         logger.error(e)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
@@ -96,15 +119,16 @@ async def upsert(
 async def query_main(
     request: QueryRequest = Body(...),
 ):
-    
+    logger.info(request)
     try:
-        results = await datastore.query(
+        result = await datastore.query(
             request.queries,
             request.namespace
         )
-        return QueryResponse(results=results)
+        return QueryResponse(results=result["results"], usage=result["usage"])
     except Exception as e:
         logger.error(e)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
@@ -119,11 +143,11 @@ async def query(
 ):
     try:
         logger.info(namespace)
-        results = await datastore.query(
+        result = await datastore.query(
             request.queries,
             request.namespace
         )
-        return QueryResponse(results=results)
+        return QueryResponse(results=result['results'], usage=results['usage'])
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
