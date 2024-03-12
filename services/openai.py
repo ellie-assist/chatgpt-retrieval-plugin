@@ -9,7 +9,7 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-large")
 
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-def get_embeddings(texts: List[str]) -> List[List[float]]:
+def get_embeddings(texts: List[str]):
     """
     Embed texts using OpenAI's ada model.
 
@@ -18,6 +18,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
 
     Returns:
         A list of embeddings, each of which is a list of floats.
+        The cost of the query
 
     Raises:
         Exception: If the OpenAI API call fails.
@@ -33,11 +34,19 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
         response = openai.Embedding.create(input=texts, deployment_id=deployment)
 
     # Extract the embedding data from the response
-    data = response["data"]  # type: ignore
+    data = response.get("data", []) 
+    usage = response.get("usage", {})  
 
     # Return the embeddings as a list of lists of floats
-    return [result["embedding"] for result in data]
+    # return [result["embedding"] for result in data]
 
+    return {
+        "embeddings": [result["embedding"] for result in data],
+        "usage": {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0)
+        }
+    }
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
 def get_chat_completion(

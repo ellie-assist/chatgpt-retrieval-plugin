@@ -1,3 +1,5 @@
+from fastapi import File, Form, UploadFile
+
 from models.models import (
     Document,
     DocumentMetadataFilter,
@@ -5,12 +7,25 @@ from models.models import (
     QueryResult,
 )
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
+
+class NamespaceModel(BaseModel):
+    vector_count: int
+    
+class StatsResponse(BaseModel):
+    index_fullness: float
+    # namespaces: Dict[str, NamespaceModel]
+    total_vector_count: int
 
 
 class UpsertRequest(BaseModel):
     documents: List[Document]
     namespace: str
+
+class UpsertFileRequest(BaseModel):
+    file: UploadFile = File(...),
+    metadata: Optional[str] = Form(None),
+    namespace: str = Form(None)
 
 
 class UpsertResponse(BaseModel):

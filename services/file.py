@@ -17,7 +17,7 @@ async def get_document_from_file(
 ) -> Document:
     extracted_text = await extract_text_from_form_file(file)
 
-    doc = Document(text=extracted_text, metadata=metadata)
+    doc = Document(id=metadata.source_id, text=extracted_text, metadata=metadata)
 
     return doc
 
@@ -92,9 +92,8 @@ async def extract_text_from_form_file(file: UploadFile):
     """Return the text content of a file."""
     # get the file body from the upload file object
     mimetype = file.content_type
-    logger.info(f"mimetype: {mimetype}")
-    logger.info(f"file.file: {file.file}")
-    logger.info("file: ", file)
+    logger.info(f"mimetype: {mimetype}")    
+    logger.info(f"file: {file}")
 
     file_stream = await file.read()
 
@@ -106,6 +105,7 @@ async def extract_text_from_form_file(file: UploadFile):
 
     try:
         extracted_text = extract_text_from_filepath(temp_file_path, mimetype)
+        logger.info('text: ', extracted_text)
     except Exception as e:
         logger.error(e)
         os.remove(temp_file_path)

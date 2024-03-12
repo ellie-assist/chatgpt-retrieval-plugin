@@ -8,6 +8,9 @@ class Source(str, Enum):
     file = "file"
     chat = "chat"
 
+class Usage(BaseModel):
+    promptTokens: int = 0
+    completionTokens: int = 0
 
 class DocumentMetadata(BaseModel):
     source: Optional[Source] = None
@@ -15,6 +18,7 @@ class DocumentMetadata(BaseModel):
     url: Optional[str] = None
     created_at: Optional[str] = None
     author: Optional[str] = None
+    namespace: Optional[str] = None
 
 
 class DocumentChunkMetadata(DocumentMetadata):
@@ -64,3 +68,4 @@ class QueryWithEmbedding(Query):
 class QueryResult(BaseModel):
     query: str
     results: List[DocumentChunkWithScore]
+    usage: Optional[Usage]

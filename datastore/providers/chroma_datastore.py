@@ -78,10 +78,10 @@ class ChromaDataStore(DataStore):
         Return a list of document ids.
         """
 
-        chunks = get_document_chunks(documents, chunk_token_size)
+        chunks_result = get_document_chunks(documents, chunk_token_size)
 
         # Chroma has a true upsert, so we don't need to delete first
-        return await self._upsert(chunks)
+        return await self._upsert(chunks_result["chunks"])
 
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
         """

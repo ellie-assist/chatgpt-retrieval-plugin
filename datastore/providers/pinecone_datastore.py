@@ -46,7 +46,13 @@ class PineconeDataStore(DataStore):
             raise e
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
-    async def _upsert(self, chunks: Dict[str, List[DocumentChunk]], namespace) -> List[str]:
+    async def stats(self):
+        index_stats_response = self.index.describe_index_stats()
+        logger.info(index_stats_response)
+        return index_stats_response
+
+    @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+    async def _upsert(self, chunks: Dict[str, List[DocumentChunk]], namespace: str) -> List[str]:
         """
         Takes in a dict from document id to list of document chunks and inserts them into the index.
         Return a list of document ids.
@@ -78,7 +84,7 @@ class PineconeDataStore(DataStore):
         # Upsert each batch to Pinecone
         for batch in batches:
             try:
-                logger.info(f"Upserting batch of size {len(batch)}")
+                logger.info(f"Upserting batch of size {len(batch)} to namespace {namespace}")
                 self.index.upsert(vectors=batch, namespace=namespace)
                 logger.info(f"Upserted batch successfully")
             except Exception as e:
@@ -99,13 +105,13 @@ class PineconeDataStore(DataStore):
         """
 
         # Define a helper coroutine that performs a single query and returns a QueryResult
-        async def _single_query(query: QueryWithEmbedding) -> QueryResult:
-            logger.debug(f"Query: {query.query}")
-
+        async def _single_query(query: QueryWithEmbedding) -> QueryResult:            
             # Convert the metadata filter object to a dict with pinecone filter expressions
             pinecone_filter = self._get_pinecone_filter(query.filter)
 
+            logger.debug(f"PC Filter: {pinecone_filter}")
             try:
+                logger.debug(f"Query: {query}");
                 # Query the index with the query embedding, filter, and top_k
                 query_response = self.index.query(
                     namespace=namespace,
@@ -113,7 +119,8 @@ class PineconeDataStore(DataStore):
                     vector=query.embedding,
                     filter=pinecone_filter,
                     include_metadata=True,
-                )
+                )                
+                
             except Exception as e:
                 logger.error(f"Error querying index: {e}")
                 raise e
@@ -146,6 +153,7 @@ class PineconeDataStore(DataStore):
                     else "",
                     metadata=metadata_without_text,
                 )
+                
                 query_results.append(result)
             return QueryResult(query=query.query, results=query_results)
 
@@ -153,6 +161,8 @@ class PineconeDataStore(DataStore):
         results: List[QueryResult] = await asyncio.gather(
             *[_single_query(query) for query in queries]
         )
+
+        logger.info(f"Results: {len(results)}")
 
         return results
 
@@ -164,6 +174,7 @@ class PineconeDataStore(DataStore):
         delete_all: Optional[bool] = None,
         namespace: Optional[str] = None
     ) -> bool:
+        logger.info('deleting vectors')
         """
         Removes vectors by ids, filter, or everything from the index.
         """
@@ -181,7 +192,7 @@ class PineconeDataStore(DataStore):
         # Convert the metadata filter object to a dict with pinecone filter expressions
         pinecone_filter = self._get_pinecone_filter(filter)
         # Delete vectors that match the filter from the index if the filter is not empty
-        if pinecone_filter != {}:
+        if pinecone_filter != {}:            
             try:
                 logger.info(f"Deleting vectors with filter {pinecone_filter}")
                 self.index.delete(filter=pinecone_filter, namespace=namespace)

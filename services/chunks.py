@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Tuple
 import uuid
 import os
 from models.models import Document, DocumentChunk, DocumentChunkMetadata
+from loguru import logger
 
 import tiktoken
 
@@ -13,7 +14,7 @@ tokenizer = tiktoken.get_encoding(
 )  # The encoding scheme to use for tokenization
 
 # Constants
-CHUNK_SIZE = 500  # The target size of each text chunk in tokens
+CHUNK_SIZE = 256  # The target size of each text chunk in tokens
 MIN_CHUNK_SIZE_CHARS = 350  # The minimum size of each text chunk in characters
 MIN_CHUNK_LENGTH_TO_EMBED = 5  # Discard chunks shorter than this
 EMBEDDINGS_BATCH_SIZE = int(
@@ -165,7 +166,7 @@ def get_document_chunks(
     """
     # Initialize an empty dictionary of lists of chunks
     chunks: Dict[str, List[DocumentChunk]] = {}
-
+    usage = {}
     # Initialize an empty list of all chunks
     all_chunks: List[DocumentChunk] = []
 
@@ -182,7 +183,7 @@ def get_document_chunks(
     # Check if there are no chunks
     if not all_chunks:
         return {}
-
+    
     # Get all the embeddings for the document chunks in batches, using get_embeddings
     embeddings: List[List[float]] = []
     for i in range(0, len(all_chunks), EMBEDDINGS_BATCH_SIZE):
@@ -191,15 +192,23 @@ def get_document_chunks(
             chunk.text for chunk in all_chunks[i : i + EMBEDDINGS_BATCH_SIZE]
         ]
 
-        # Get the embeddings for the batch texts
-        batch_embeddings = get_embeddings(batch_texts)
-
+        logger.info(f'getting embeddings for {len(batch_texts)} texts')
+        # Get the embeddings for the batch texts        
+        embeddings_result = get_embeddings(batch_texts)
+        batch_embeddings = embeddings_result['embeddings']
+        logger.info(f'got embeddings {len(batch_embeddings)}')
         # Append the batch embeddings to the embeddings list
         embeddings.extend(batch_embeddings)
 
     # Update the document chunk objects with the embeddings
+    logger.info(f'all_chunks {len(all_chunks)}')
+    logger.info(f'embeddings {len(embeddings)}')
     for i, chunk in enumerate(all_chunks):
         # Assign the embedding from the embeddings list to the chunk object
+        logger.info(f'chunk {i}')
         chunk.embedding = embeddings[i]
 
-    return chunks
+    return { 
+        "chunks": chunks, 
+        "usage": usage 
+    }
