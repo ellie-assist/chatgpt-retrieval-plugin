@@ -182,7 +182,12 @@ def get_document_chunks(
 
     # Check if there are no chunks
     if not all_chunks:
-        return {}
+        logger.info('No chunks')
+        return { 
+            "chunks": {}, 
+            "usage": 0 
+        }
+        
     
     # Get all the embeddings for the document chunks in batches, using get_embeddings
     embeddings: List[List[float]] = []

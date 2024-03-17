@@ -14,6 +14,7 @@ class Usage(BaseModel):
 
 class DocumentMetadata(BaseModel):
     source: Optional[Source] = None
+    document_id: Optional[str] = None
     source_id: Optional[str] = None
     url: Optional[str] = None
     created_at: Optional[str] = None

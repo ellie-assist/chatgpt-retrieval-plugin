@@ -59,6 +59,7 @@ class PineconeDataStore(DataStore):
         """
         # Initialize a list of ids to return
         doc_ids: List[str] = []
+        vector_ids: List[str] = []
         # Initialize a list of vectors to upsert
         vectors = []
         # Loop through the dict items
@@ -75,6 +76,7 @@ class PineconeDataStore(DataStore):
                 pinecone_metadata["document_id"] = doc_id
                 vector = (chunk.id, chunk.embedding, pinecone_metadata)
                 vectors.append(vector)
+                vector_ids.append(chunk.id)
 
         # Split the vectors list into batches of the specified size
         batches = [
@@ -92,7 +94,7 @@ class PineconeDataStore(DataStore):
                 logger.error(f"Error upserting batch: {e}")
                 raise e
 
-        return doc_ids
+        return vector_ids
 
     @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
     async def _query(

@@ -17,7 +17,7 @@ async def get_document_from_file(
 ) -> Document:
     extracted_text = await extract_text_from_form_file(file)
 
-    doc = Document(id=metadata.source_id, text=extracted_text, metadata=metadata)
+    doc = Document(id=metadata.document_id, text=extracted_text, metadata=metadata)
 
     return doc
 
