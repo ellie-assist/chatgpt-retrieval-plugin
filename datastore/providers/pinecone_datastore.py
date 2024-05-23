@@ -26,9 +26,6 @@ assert PINECONE_INDEX_HOST is not None
 # Initialize Pinecone with the API key and environment
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
-for index in pc.list_indexes():
-    print(index['name'])
-
 # Set the batch size for upserting vectors to Pinecone
 UPSERT_BATCH_SIZE = 100
 
@@ -66,7 +63,7 @@ class PineconeDataStore(DataStore):
         for doc_id, chunk_list in chunks.items():
             # Append the id to the ids list
             doc_ids.append(doc_id)
-            logger.info(f"Upserting document_id: {doc_id}")
+            logger.debug(f"Upserting document_id: {doc_id}")
             for chunk in chunk_list:
                 # Create a vector tuple of (id, embedding, metadata)
                 # Convert the metadata object to a dict with unix timestamps for dates
@@ -86,9 +83,9 @@ class PineconeDataStore(DataStore):
         # Upsert each batch to Pinecone
         for batch in batches:
             try:
-                logger.info(f"Upserting batch of size {len(batch)} to namespace {namespace}")
+                logger.debug(f"Upserting batch of size {len(batch)} to namespace {namespace}")
                 self.index.upsert(vectors=batch, namespace=namespace)
-                logger.info(f"Upserted batch successfully")
+                logger.debug(f"Upserted batch successfully")
             except Exception as e:
                 logger.error(e);
                 logger.error(f"Error upserting batch: {e}")
@@ -111,9 +108,7 @@ class PineconeDataStore(DataStore):
             # Convert the metadata filter object to a dict with pinecone filter expressions
             pinecone_filter = self._get_pinecone_filter(query.filter)
 
-            logger.debug(f"PC Filter: {pinecone_filter}")
-            try:
-                logger.debug(f"Query: {query}");
+            try:            
                 # Query the index with the query embedding, filter, and top_k
                 query_response = self.index.query(
                     namespace=namespace,
@@ -183,9 +178,9 @@ class PineconeDataStore(DataStore):
         # Delete all vectors from the index if delete_all is True
         if delete_all:
             try:
-                logger.info(f"Deleting all vectors from index")
+                logger.debug(f"Deleting all vectors from index")
                 self.index.delete(delete_all=True, namespace=namespace)
-                logger.info(f"Deleted all vectors successfully")
+                logger.debug(f"Deleted all vectors successfully")
                 return True
             except Exception as e:
                 logger.error(f"Error deleting all vectors: {e}")
