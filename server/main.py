@@ -121,6 +121,13 @@ async def query_main(
 ):
     logger.info(request)
     try:
+        # Add input validation
+        if any(not query.query.strip() for query in request.queries):
+            raise HTTPException(
+                status_code=400, 
+                detail="Empty queries are not allowed"
+            )
+            
         result = await datastore.query(
             request.queries,
             request.namespace
