@@ -1,9 +1,8 @@
-
 FROM python:3.10 as requirements-stage
 
 WORKDIR /tmp
 
-RUN pip install poetry
+RUN pip install poetry==1.7.1
 
 COPY ./pyproject.toml ./poetry.lock* /tmp/
 
@@ -13,6 +12,10 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 FROM python:3.10
 
 WORKDIR /code
+
+# Install Rust compiler
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY --from=requirements-stage /tmp/requirements.txt /code/requirements.txt
 
