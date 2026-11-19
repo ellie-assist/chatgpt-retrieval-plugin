@@ -34,7 +34,7 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
         # os.environ.get("OPENAI_METADATA_EXTRACTIONMODEL_DEPLOYMENTID")
     )  # TODO: change to your preferred model name
 
-    logger.info(f"completion: {completion}")
+    logger.info(f"completion received: chars={len(completion or '')}")
 
     try:
         metadata = json.loads(completion)
