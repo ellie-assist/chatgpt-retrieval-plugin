@@ -105,7 +105,7 @@ async def extract_text_from_form_file(file: UploadFile):
 
     try:
         extracted_text = extract_text_from_filepath(temp_file_path, mimetype)
-        logger.info('text: ', extracted_text)
+        logger.info(f'extracted text_chars={len(extracted_text or "")}')
     except Exception as e:
         logger.error(e)
         os.remove(temp_file_path)

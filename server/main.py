@@ -85,7 +85,8 @@ async def upsert_file(
     
     
     document = await get_document_from_file(file, metadata_obj)
-    logger.info(f'Document: {document}')
+    # Never log document text: it can be customer email content.
+    logger.info(f'Document parsed: id={document.id} text_chars={len(document.text or "")}')
     try:
         ids = await datastore.upsert([document], namespace)
         return UpsertResponse(ids=ids)
@@ -103,7 +104,10 @@ async def upsert(
     request: UpsertRequest = Body(...),
 ):
     try:        
-        logger.info(f"request to UPSERT {request}");
+        logger.info(
+            f"UPSERT namespace={request.namespace} documents={len(request.documents)} "
+            f"text_chars={sum(len(d.text or '') for d in request.documents)}"
+        )
         ids = await datastore.upsert(request.documents, request.namespace)
         return UpsertResponse(ids=ids)
     except Exception as e:
@@ -119,7 +123,10 @@ async def upsert(
 async def query_main(
     request: QueryRequest = Body(...),
 ):
-    logger.info(request)
+    logger.info(
+        f"QUERY namespace={request.namespace} queries={len(request.queries)} "
+        f"query_chars={[len(q.query or '') for q in request.queries]}"
+    )
     try:
         # Add input validation
         if any(not query.query.strip() for query in request.queries):

@@ -83,5 +83,5 @@ def get_chat_completion(
 
     choices = response["choices"]  # type: ignore
     completion = choices[0].message.content.strip()
-    logger.info(f"Completion: {completion}")
+    logger.info(f"Completion received: chars={len(completion or '')}")
     return completion
